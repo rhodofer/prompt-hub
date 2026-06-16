@@ -11,31 +11,22 @@ export function openPromptPanel(
 ): void {
   const panel = vscode.window.createWebviewPanel(
     'promptHub.form',
-    existing ? `Edit: ${existing.title}` : 'New Prompt',
+    existing ? 'Edit Prompt' : 'New Prompt',
     vscode.ViewColumn.One,
-    {
-      enableScripts: true,
-      retainContextWhenHidden: false,
-      localResourceRoots: [],
-    }
+    { enableScripts: true, retainContextWhenHidden: false, localResourceRoots: [] }
   );
 
-  // Load existing image as base64 for editing
   let existingImageSrc = '';
   if (existing?.imagePath && fs.existsSync(existing.imagePath)) {
     const ext = path.extname(existing.imagePath).slice(1).toLowerCase();
     const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
-    const b64 = fs.readFileSync(existing.imagePath).toString('base64');
-    existingImageSrc = `data:${mime};base64,${b64}`;
+    existingImageSrc = `data:${mime};base64,${fs.readFileSync(existing.imagePath).toString('base64')}`;
   }
 
   panel.webview.html = getHtml(existing, existingImageSrc);
 
   panel.webview.onDidReceiveMessage(async (msg) => {
-    if (msg.type === 'cancel') {
-      panel.dispose();
-      return;
-    }
+    if (msg.type === 'cancel') { panel.dispose(); return; }
 
     if (msg.type === 'save') {
       let imagePath = existing?.imagePath;
@@ -43,21 +34,20 @@ export function openPromptPanel(
       if (msg.clearImage) {
         imagePath = undefined;
       } else if (msg.imageBase64 && msg.imageType) {
-        // Ensure storage directory exists
         const storageDir = context.globalStorageUri.fsPath;
         const imagesDir = path.join(storageDir, 'images');
-        if (!fs.existsSync(imagesDir)) {
-          fs.mkdirSync(imagesDir, { recursive: true });
-        }
-
+        if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
         const ext = msg.imageType === 'image/jpeg' ? 'jpg' : 'png';
         const imgPath = path.join(imagesDir, `${randomUUID()}.${ext}`);
-        const base64Data = msg.imageBase64.replace(/^data:image\/\w+;base64,/, '');
-        fs.writeFileSync(imgPath, Buffer.from(base64Data, 'base64'));
+        fs.writeFileSync(imgPath, Buffer.from(msg.imageBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64'));
         imagePath = imgPath;
       }
 
-      await onSave({ title: msg.title, content: msg.content, imagePath });
+      // Auto-generate title from first line / first 40 chars of content
+      const firstLine = (msg.content as string).split('\n')[0].trim();
+      const title = firstLine.length > 40 ? firstLine.slice(0, 40) + '…' : firstLine;
+
+      await onSave({ title, content: msg.content, imagePath });
       panel.dispose();
     }
   }, undefined, context.subscriptions);
@@ -65,7 +55,6 @@ export function openPromptPanel(
 
 function getHtml(existing?: Prompt, existingImageSrc?: string): string {
   const nonce = randomUUID().replace(/-/g, '');
-  const safeTitle = (existing?.title ?? '').replace(/"/g, '&quot;');
   const safeContent = (existing?.content ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const hasImage = !!existingImageSrc;
 
@@ -96,7 +85,7 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
       color: var(--vscode-descriptionForeground);
       margin-bottom: 6px;
     }
-    input[type="text"], textarea {
+    textarea {
       width: 100%;
       background: var(--vscode-input-background);
       color: var(--vscode-input-foreground);
@@ -105,13 +94,12 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
       padding: 8px 10px;
       font: inherit;
       outline: none;
-      resize: none;
+      resize: vertical;
+      min-height: 140px;
       transition: border-color 0.15s;
     }
-    input[type="text"]:focus, textarea:focus {
-      border-color: var(--vscode-focusBorder);
-    }
-    textarea { min-height: 110px; resize: vertical; }
+    textarea:focus { border-color: var(--vscode-focusBorder); }
+    .error { color: var(--vscode-errorForeground); font-size: 0.82em; margin-top: 4px; display: none; }
 
     /* Paste Zone */
     #paste-zone {
@@ -123,7 +111,6 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
       justify-content: center;
       flex-direction: column;
       gap: 8px;
-      cursor: default;
       transition: border-color 0.15s, background 0.15s;
       position: relative;
       overflow: hidden;
@@ -133,202 +120,133 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
       border-color: var(--vscode-focusBorder);
       background: var(--vscode-list-hoverBackground);
     }
-    #paste-zone.has-image {
-      border-color: var(--vscode-focusBorder);
-      padding: 8px;
-      min-height: unset;
-    }
+    #paste-zone.has-image { border-color: var(--vscode-focusBorder); padding: 8px; min-height: unset; }
     #paste-hint { color: var(--vscode-descriptionForeground); font-size: 0.88em; text-align: center; pointer-events: none; }
     #paste-hint kbd {
       background: var(--vscode-keybindingLabel-background, rgba(128,128,128,0.2));
       border: 1px solid var(--vscode-keybindingLabel-border, rgba(128,128,128,0.4));
-      border-radius: 3px;
-      padding: 1px 5px;
-      font-family: monospace;
+      border-radius: 3px; padding: 1px 5px; font-family: monospace;
     }
-    #preview-img {
-      max-width: 100%;
-      max-height: 220px;
-      border-radius: 6px;
-      display: ${hasImage ? 'block' : 'none'};
-    }
+    #preview-img { max-width: 100%; max-height: 220px; border-radius: 6px; display: ${hasImage ? 'block' : 'none'}; }
     #remove-btn {
-      position: absolute;
-      top: 6px; right: 6px;
-      background: var(--vscode-errorForeground);
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      width: 22px; height: 22px;
-      font-size: 14px;
-      line-height: 22px;
-      text-align: center;
-      cursor: pointer;
-      display: ${hasImage ? 'block' : 'none'};
-      z-index: 10;
+      position: absolute; top: 6px; right: 6px;
+      background: var(--vscode-errorForeground); color: #fff;
+      border: none; border-radius: 50%;
+      width: 22px; height: 22px; font-size: 14px;
+      line-height: 22px; text-align: center; cursor: pointer;
+      display: ${hasImage ? 'block' : 'none'}; z-index: 10;
     }
 
-    /* Actions */
     .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
     button.primary, button.secondary {
-      padding: 7px 22px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.92em;
+      padding: 7px 22px; border: none; border-radius: 4px;
+      cursor: pointer; font: inherit; font-size: 0.92em;
     }
-    button.primary {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-    }
+    button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
     button.primary:hover { background: var(--vscode-button-hoverBackground); }
-    button.secondary {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-    }
+    button.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
     button.secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
-    .error { color: var(--vscode-errorForeground); font-size: 0.82em; margin-top: 4px; display: none; }
   </style>
 </head>
 <body>
   <h1>${existing ? '✏️ Edit Prompt' : '📝 New Prompt'}</h1>
 
   <div class="field">
-    <label for="inp-title">Title</label>
-    <input id="inp-title" type="text" placeholder="e.g. Refactor TypeScript" value="${safeTitle}" autocomplete="off" spellcheck="false">
-    <div class="error" id="err-title">Title is required.</div>
+    <label for="inp-content">Prompt</label>
+    <textarea id="inp-content" placeholder="Prompt metnini buraya yazın veya yapıştırın…">${safeContent}</textarea>
+    <div class="error" id="err-content">Prompt içeriği gerekli.</div>
   </div>
 
   <div class="field">
-    <label for="inp-content">Prompt Content</label>
-    <textarea id="inp-content" placeholder="Paste or type your prompt here…">${safeContent}</textarea>
-    <div class="error" id="err-content">Content is required.</div>
-  </div>
-
-  <div class="field">
-    <label>Image (optional)</label>
+    <label>Resim (isteğe bağlı)</label>
     <div id="paste-zone">
-      <button id="remove-btn" title="Remove image">✕</button>
-      <img id="preview-img" src="${existingImageSrc ?? ''}" alt="Preview">
+      <button id="remove-btn" title="Resmi kaldır">✕</button>
+      <img id="preview-img" src="${existingImageSrc ?? ''}" alt="Önizleme">
       <div id="paste-hint">
-        <div>📋 Press <kbd>Ctrl+V</kbd> to paste an image from clipboard</div>
-        <div style="margin-top:4px; opacity:0.7;">or drag &amp; drop a PNG / JPG file here</div>
+        <div>📋 <kbd>Ctrl+V</kbd> ile panodaki resmi yapıştırın</div>
+        <div style="margin-top:4px;opacity:0.7">ya da PNG / JPG dosyasını buraya sürükleyin</div>
       </div>
     </div>
   </div>
 
   <div class="actions">
-    <button class="secondary" id="btn-cancel">Cancel</button>
-    <button class="primary" id="btn-save">💾 Save</button>
+    <button class="secondary" id="btn-cancel">İptal</button>
+    <button class="primary" id="btn-save">💾 Kaydet</button>
   </div>
 
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
-
     let imageBase64 = ${hasImage ? `"${existingImageSrc}"` : 'null'};
-    let imageType = ${hasImage ? '"image/png"' : 'null'};
-    let clearImage = false;
-    let originalHasImage = ${hasImage};
+    let imageType   = ${hasImage ? '"image/png"' : 'null'};
+    let clearImage  = false;
+    const originalHasImage = ${hasImage};
 
-    const pasteZone = document.getElementById('paste-zone');
-    const hint = document.getElementById('paste-hint');
+    const pasteZone  = document.getElementById('paste-zone');
+    const hint       = document.getElementById('paste-hint');
     const previewImg = document.getElementById('preview-img');
-    const removeBtn = document.getElementById('remove-btn');
+    const removeBtn  = document.getElementById('remove-btn');
 
     function showImage(src, type) {
-      imageBase64 = src;
-      imageType = type;
-      clearImage = false;
-      previewImg.src = src;
-      previewImg.style.display = 'block';
-      removeBtn.style.display = 'block';
-      hint.style.display = 'none';
+      imageBase64 = src; imageType = type; clearImage = false;
+      previewImg.src = src; previewImg.style.display = 'block';
+      removeBtn.style.display = 'block'; hint.style.display = 'none';
       pasteZone.classList.add('has-image');
     }
 
     function clearImageFn() {
-      imageBase64 = null;
-      imageType = null;
-      clearImage = originalHasImage; // only flag clear if there was an original
-      previewImg.src = '';
-      previewImg.style.display = 'none';
-      removeBtn.style.display = 'none';
-      hint.style.display = '';
+      imageBase64 = null; imageType = null; clearImage = originalHasImage;
+      previewImg.src = ''; previewImg.style.display = 'none';
+      removeBtn.style.display = 'none'; hint.style.display = '';
       pasteZone.classList.remove('has-image');
     }
 
     removeBtn.addEventListener('click', clearImageFn);
 
-    // Global paste — catch Ctrl+V anywhere on the page
+    // Ctrl+V — sadece içerik alanında DEĞİLKEN resim yakala
     document.addEventListener('paste', (e) => {
-      // Don't intercept if user is typing in title/content
-      const active = document.activeElement;
-      if (active && (active.id === 'inp-title' || active.id === 'inp-content')) return;
-
+      if (document.activeElement?.id === 'inp-content') return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of Array.from(items)) {
         if (item.type.startsWith('image/')) {
           e.preventDefault();
-          const blob = item.getAsFile();
           const reader = new FileReader();
           reader.onload = (ev) => showImage(ev.target.result, item.type);
-          reader.readAsDataURL(blob);
+          reader.readAsDataURL(item.getAsFile());
           return;
         }
       }
     });
 
-    // Drag & drop onto paste zone
-    pasteZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      pasteZone.classList.add('hover');
-    });
+    // Drag & drop
+    pasteZone.addEventListener('dragover', (e) => { e.preventDefault(); pasteZone.classList.add('hover'); });
     pasteZone.addEventListener('dragleave', () => pasteZone.classList.remove('hover'));
     pasteZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      pasteZone.classList.remove('hover');
+      e.preventDefault(); pasteZone.classList.remove('hover');
       const file = e.dataTransfer?.files?.[0];
-      if (file && file.type.startsWith('image/')) {
+      if (file?.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (ev) => showImage(ev.target.result, file.type);
         reader.readAsDataURL(file);
       }
     });
 
-    // Save
     document.getElementById('btn-save').addEventListener('click', () => {
-      const title = document.getElementById('inp-title').value.trim();
       const content = document.getElementById('inp-content').value.trim();
-      let valid = true;
-
-      document.getElementById('err-title').style.display = title ? 'none' : 'block';
       document.getElementById('err-content').style.display = content ? 'none' : 'block';
-      if (!title || !content) return;
-
-      // Strip the data:... prefix — only send raw base64 + type separately
-      let rawBase64 = null;
-      if (imageBase64 && !clearImage) {
-        rawBase64 = imageBase64; // keep full data URL, extension will strip
-      }
-
+      if (!content) return;
       vscode.postMessage({
         type: 'save',
-        title,
         content,
-        imageBase64: rawBase64,
+        imageBase64: (imageBase64 && !clearImage) ? imageBase64 : null,
         imageType,
         clearImage,
       });
     });
 
-    document.getElementById('btn-cancel').addEventListener('click', () => {
-      vscode.postMessage({ type: 'cancel' });
-    });
+    document.getElementById('btn-cancel').addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
 
-    // Auto-focus
-    document.getElementById('inp-title').focus();
+    document.getElementById('inp-content').focus();
   </script>
 </body>
 </html>`;
