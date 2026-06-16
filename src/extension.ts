@@ -90,6 +90,10 @@ export function activate(context: vscode.ExtensionContext): void {
         out.appendLine('[Prompt Hub] Yan panel odaklanıyor (antigravity.agentSidePanel.focus)...');
         await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
       }
+      if (cmds.includes('workbench.panel.chat.view.copilot.focus')) {
+        out.appendLine('[Prompt Hub] Chat girdi kutusu odaklanıyor (workbench.panel.chat.view.copilot.focus)...');
+        await vscode.commands.executeCommand('workbench.panel.chat.view.copilot.focus');
+      }
 
       const delay = prompt.imagePath ? 250 : 400;
       out.appendLine(`[Prompt Hub] Yapıştırma gecikmesi: ${delay}ms`);
