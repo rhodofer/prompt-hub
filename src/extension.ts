@@ -66,42 +66,26 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
 
-      // 2. Metni Antigravity Chat paneline aktarmayı dene ve resmi eklemeyi dene
-      let sentToChat = false;
+      // 2. Resmi addContext komutuyla otomatik eklemeyi dene
+      let imageAttachedAuto = false;
       const cmds = await vscode.commands.getCommands();
       
-      try {
-        if (cmds.includes('antigravity.sendPromptToAgentPanel')) {
-          await vscode.commands.executeCommand('antigravity.sendPromptToAgentPanel', prompt.content);
-          sentToChat = true;
-
-          // Resmi addContext komutuyla eklemeyi dene
-          if (prompt.imagePath && fs.existsSync(prompt.imagePath) && cmds.includes('antigravity.addContext')) {
-            try {
-              const uri = vscode.Uri.file(prompt.imagePath);
-              await vscode.commands.executeCommand('antigravity.addContext', uri);
-            } catch (err) {
-              out.appendLine(`[Prompt Hub] addContext başarisiz: ${String(err)}`);
-            }
-          }
-        } else if (cmds.includes('workbench.action.chat.open')) {
-          await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt.content });
-          sentToChat = true;
+      if (prompt.imagePath && fs.existsSync(prompt.imagePath) && cmds.includes('antigravity.addContext')) {
+        try {
+          const uri = vscode.Uri.file(prompt.imagePath);
+          await vscode.commands.executeCommand('antigravity.addContext', uri);
+          imageAttachedAuto = true;
+        } catch (err) {
+          out.appendLine(`[Prompt Hub] addContext başarisiz: ${String(err)}`);
         }
-      } catch (err) {
-        out.appendLine(`[Prompt Hub] Chat paneline aktarma başarisiz: ${String(err)}`);
       }
 
-      // 3. Eğer chat paneline aktarılamadıysa klasik kopyalama yap
-      if (!sentToChat) {
-        await vscode.env.clipboard.writeText(prompt.content);
-      }
+      // 3. Metni sadece panoya kopyala (otomatik gönderimi engellemek için)
+      await vscode.env.clipboard.writeText(prompt.content);
 
       // 4. Kullanıcıyı bilgilendir
-      if (sentToChat && imageCopied) {
-        vscode.window.showInformationMessage(`🚀 Prompt Chat'e aktarıldı! Resim otomatik eklenmediyse, lütfen kutuya tıklayıp 'Ctrl+V' (Yapıştır) yapın.`);
-      } else if (sentToChat) {
-        vscode.window.showInformationMessage(`🚀 Metin doğrudan Chat paneline aktarıldı.`);
+      if (imageAttachedAuto) {
+        vscode.window.showInformationMessage(`🚀 Resim eklendi! Metni yapıştırmak için Chat kutusunda 'Ctrl+V' yapın.`);
       } else if (imageCopied) {
         vscode.window.showInformationMessage(`📋 Sırayla resim ve metin kopyalandı (Win+V).`);
       } else {
