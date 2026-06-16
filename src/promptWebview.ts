@@ -204,14 +204,30 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
 
     // Ctrl+V — Resim yapıştırmayı yakala (içerik alanı odaktayken bile)
     document.addEventListener('paste', (e) => {
+      const files = e.clipboardData?.files;
+      if (files && files.length > 0) {
+        for (const file of Array.from(files)) {
+          if (file.type.startsWith('image/')) {
+            e.preventDefault();
+            const reader = new FileReader();
+            reader.onload = (ev) => showImage(ev.target.result, file.type);
+            reader.readAsDataURL(file);
+            return;
+          }
+        }
+      }
+
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of Array.from(items)) {
         if (item.type.startsWith('image/')) {
           e.preventDefault();
-          const reader = new FileReader();
-          reader.onload = (ev) => showImage(ev.target.result, item.type);
-          reader.readAsDataURL(item.getAsFile());
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => showImage(ev.target.result, item.type);
+            reader.readAsDataURL(file);
+          }
           return;
         }
       }
