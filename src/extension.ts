@@ -83,23 +83,26 @@ export function activate(context: vscode.ExtensionContext): void {
       // 3. Metni panoya kopyala
       await vscode.env.clipboard.writeText(prompt.content);
 
-      // 4. Chat alanını odakla ve 250ms sonra otomatik Ctrl+V yap
-      if (imageAttachedAuto || imageCopied) {
-        if (cmds.includes('antigravity.agentSidePanel.focus')) {
-          await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
-        } else if (cmds.includes('antigravity.toggleChatFocus')) {
-          await vscode.commands.executeCommand('antigravity.toggleChatFocus');
-        }
+      // 4. Chat alanını her durumda odakla ve 250ms sonra otomatik Ctrl+V yap
+      if (cmds.includes('antigravity.agentSidePanel.focus')) {
+        await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
+      } else if (cmds.includes('antigravity.toggleChatFocus')) {
+        await vscode.commands.executeCommand('antigravity.toggleChatFocus');
+      }
 
-        setTimeout(() => {
-          simulateCtrlV().catch(err => {
-            out.appendLine(`[Prompt Hub] Auto Ctrl+V failed: ${String(err)}`);
-          });
-        }, 250);
-        
-        vscode.window.showInformationMessage(`🚀 Resim eklendi ve metin otomatik yapıştırıldı!`);
+      setTimeout(() => {
+        simulateCtrlV().catch(err => {
+          out.appendLine(`[Prompt Hub] Auto Ctrl+V failed: ${String(err)}`);
+        });
+      }, 250);
+      
+      // 5. Kullanıcıyı bilgilendir
+      if (imageAttachedAuto) {
+        vscode.window.showInformationMessage(`🚀 Resim ve metin Chat kutusuna otomatik eklendi!`);
+      } else if (imageCopied) {
+        vscode.window.showInformationMessage(`🚀 Metin Chat kutusuna eklendi, resmi yapıştırmak için Win+V yapabilirsiniz.`);
       } else {
-        vscode.window.showInformationMessage(`📋 "${prompt.title}" kopyalandı.`);
+        vscode.window.showInformationMessage(`🚀 "${prompt.title}" Chat kutusuna eklendi!`);
       }
     })
   );
