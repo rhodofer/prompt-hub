@@ -1,0 +1,95 @@
+{
+  "name": "prompt-hub",
+  "displayName": "Prompt Hub",
+  "description": "Save, manage, and instantly copy your reusable AI prompts from a VS Code sidebar.",
+  "version": "1.0.0",
+  "publisher": "seffi",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "promptHubContainer",
+          "title": "Prompt Hub",
+          "icon": "$(note)"
+        }
+      ]
+    },
+    "views": {
+      "promptHubContainer": [
+        {
+          "id": "promptHubView",
+          "name": "My Prompts",
+          "icon": "$(note)",
+          "contextualTitle": "Prompt Hub"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "promptHub.addPrompt",
+        "title": "Add Prompt",
+        "category": "Prompt Hub",
+        "icon": "$(add)"
+      },
+      {
+        "command": "promptHub.copyPrompt",
+        "title": "Copy Prompt",
+        "category": "Prompt Hub",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "promptHub.editPrompt",
+        "title": "Edit Prompt",
+        "category": "Prompt Hub",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "promptHub.deletePrompt",
+        "title": "Delete Prompt",
+        "category": "Prompt Hub",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "promptHub.addPrompt",
+          "when": "view == promptHubView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "promptHub.editPrompt",
+          "when": "viewItem == prompt",
+          "group": "inline"
+        },
+        {
+          "command": "promptHub.deletePrompt",
+          "when": "viewItem == prompt",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node esbuild.js --minify",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.4.0"
+  }
+}
