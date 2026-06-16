@@ -38,12 +38,13 @@ export function activate(context: vscode.ExtensionContext): void {
           title: data.title,
           content: data.content,
           imagePath: data.imagePath,
+          imagePaths: data.imagePaths,
         };
         await addPrompt(context, prompt);
         const all = getPrompts(context);
         out.appendLine(`[Prompt Hub] saved. Total: ${all.length}`);
         vscode.window.showInformationMessage(
-          `✅ "${prompt.title}" added${prompt.imagePath ? ' with image 🖼️' : ''}.`
+          `✅ "${prompt.title}" added${(prompt.imagePaths && prompt.imagePaths.length > 0) ? ` with ${prompt.imagePaths.length} images 🖼️` : ''}.`
         );
         provider.refresh();
       });
@@ -55,30 +56,38 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('promptHub.copyPrompt', async (promptOrItem: Prompt | PromptTreeItem) => {
       const prompt = 'prompt' in promptOrItem ? promptOrItem.prompt : promptOrItem;
 
-      // 1. Resmi panoya kopyala (varsa)
-      let imageCopied = false;
-      if (prompt.imagePath && fs.existsSync(prompt.imagePath)) {
-        try {
-          await copyImageToClipboard(prompt.imagePath);
-          imageCopied = true;
-        } catch (err) {
-          out.appendLine(`[Prompt Hub] Failed to copy image to clipboard: ${String(err)}`);
+      // 1 & 2. Resimleri kopyala/ekle
+      const imagePaths = (prompt as any).imagePaths || (prompt.imagePath ? [prompt.imagePath] : []);
+      let firstImageCopied = false;
+      let imagesAttachedAutoCount = 0;
+
+      const cmds = await vscode.commands.getCommands();
+      const hasAddContext = cmds.includes('antigravity.addContext');
+
+      for (let i = 0; i < imagePaths.length; i++) {
+        const imgPath = imagePaths[i];
+        if (fs.existsSync(imgPath)) {
+          if (hasAddContext) {
+            try {
+              const uri = vscode.Uri.file(imgPath);
+              await vscode.commands.executeCommand('antigravity.addContext', uri);
+              imagesAttachedAutoCount++;
+            } catch (err) {
+              out.appendLine(`[Prompt Hub] addContext başarisiz: ${String(err)}`);
+            }
+          }
+          if (i === 0) {
+            try {
+              await copyImageToClipboard(imgPath);
+              firstImageCopied = true;
+            } catch (err) {
+              out.appendLine(`[Prompt Hub] Failed to copy image to clipboard: ${String(err)}`);
+            }
+          }
         }
       }
 
-      // 2. Resmi addContext komutuyla otomatik eklemeyi dene
-      let imageAttachedAuto = false;
-      const cmds = await vscode.commands.getCommands();
-      
-      if (prompt.imagePath && fs.existsSync(prompt.imagePath) && cmds.includes('antigravity.addContext')) {
-        try {
-          const uri = vscode.Uri.file(prompt.imagePath);
-          await vscode.commands.executeCommand('antigravity.addContext', uri);
-          imageAttachedAuto = true;
-        } catch (err) {
-          out.appendLine(`[Prompt Hub] addContext başarisiz: ${String(err)}`);
-        }
-      }
+      const imageAttachedAuto = imagesAttachedAutoCount > 0;
 
       // 3. Metni panoya kopyala (sadece metin varsa)
       if (prompt.content) {
@@ -86,9 +95,10 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       // 4. Chat alanını her durumda odakla ve otomatik Ctrl+V yap
-      out.appendLine(`[Prompt Hub] copyPrompt: prompt clicked: "${prompt.title}" (görsel: ${!!prompt.imagePath})`);
+      const hasImages = imagePaths.length > 0;
+      out.appendLine(`[Prompt Hub] copyPrompt: prompt clicked: "${prompt.title}" (görseller: ${imagePaths.length})`);
 
-      if (prompt.imagePath) {
+      if (hasImages) {
         if (cmds.includes('antigravity.agentSidePanel.focus')) {
           out.appendLine('[Prompt Hub] Yan panel odaklanıyor (antigravity.agentSidePanel.focus)...');
           await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
@@ -103,9 +113,9 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
 
-      const shouldPaste = prompt.content || (prompt.imagePath && !imageAttachedAuto);
+      const shouldPaste = prompt.content || (hasImages && !imageAttachedAuto);
       if (shouldPaste) {
-        const delay = prompt.imagePath ? 250 : 400;
+        const delay = hasImages ? 250 : 400;
         out.appendLine(`[Prompt Hub] Yapıştırma gecikmesi: ${delay}ms`);
 
         setTimeout(() => {
@@ -115,21 +125,22 @@ export function activate(context: vscode.ExtensionContext): void {
           });
         }, delay);
       } else {
-        out.appendLine('[Prompt Hub] Görsel otomatik eklendi ve metin olmadığı için yapıştırma simülasyonu atlanıyor.');
+        out.appendLine('[Prompt Hub] Görseller otomatik eklendi ve metin olmadığı için yapıştırma simülasyonu atlanıyor.');
       }
       
       // 5. Kullanıcıyı bilgilendir
       if (imageAttachedAuto) {
+        const countStr = imagesAttachedAutoCount > 1 ? `${imagesAttachedAutoCount} görsel` : 'Görsel';
         if (prompt.content) {
-          vscode.window.showInformationMessage(`🚀 Resim ve metin Chat kutusuna otomatik eklendi!`);
+          vscode.window.showInformationMessage(`🚀 ${countStr} ve metin Chat kutusuna otomatik eklendi!`);
         } else {
-          vscode.window.showInformationMessage(`🚀 Resim Chat kutusuna otomatik eklendi!`);
+          vscode.window.showInformationMessage(`🚀 ${countStr} Chat kutusuna otomatik eklendi!`);
         }
-      } else if (imageCopied) {
+      } else if (firstImageCopied) {
         if (prompt.content) {
-          vscode.window.showInformationMessage(`🚀 Metin Chat kutusuna eklendi, resmi yapıştırmak için Win+V yapabilirsiniz.`);
+          vscode.window.showInformationMessage(`🚀 Metin Chat kutusuna eklendi, ilk resmi yapıştırmak için Win+V yapabilirsiniz.`);
         } else {
-          vscode.window.showInformationMessage(`🚀 Resim panoya kopyalandı, yapıştırmak için Win+V veya Ctrl+V yapabilirsiniz.`);
+          vscode.window.showInformationMessage(`🚀 İlk resim panoya kopyalandı, yapıştırmak için Win+V veya Ctrl+V yapabilirsiniz.`);
         }
       } else {
         vscode.window.showInformationMessage(`🚀 "${prompt.title}" Chat kutusuna eklendi!`);
@@ -137,18 +148,20 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // ── Open Image ────────────────────────────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand('promptHub.openImage', async (prompt: Prompt) => {
-      if (!prompt.imagePath) {
+      const paths = (prompt as any).imagePaths || (prompt.imagePath ? [prompt.imagePath] : []);
+      if (paths.length === 0) {
         await vscode.env.clipboard.writeText(prompt.content);
         vscode.window.showInformationMessage(`📋 "${prompt.title}" copied.`);
         return;
       }
-      try {
-        await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(prompt.imagePath));
-      } catch (err) {
-        vscode.window.showErrorMessage(`Cannot open image: ${String(err)}`);
+      for (const p of paths) {
+        try {
+          await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(p));
+        } catch (err) {
+          vscode.window.showErrorMessage(`Cannot open image ${path.basename(p)}: ${String(err)}`);
+        }
       }
     })
   );
@@ -163,6 +176,7 @@ export function activate(context: vscode.ExtensionContext): void {
             title: data.title,
             content: data.content,
             imagePath: data.imagePath,
+            imagePaths: data.imagePaths,
           });
           provider.refresh();
           vscode.window.showInformationMessage('✏️ Prompt updated.');

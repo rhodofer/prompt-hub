@@ -6,7 +6,7 @@ import { Prompt } from './types';
 
 export function openPromptPanel(
   context: vscode.ExtensionContext,
-  onSave: (data: { title: string; content: string; imagePath?: string }) => Promise<void>,
+  onSave: (data: { title: string; content: string; imagePath?: string; imagePaths?: string[] }) => Promise<void>,
   existing?: Prompt
 ): void {
   const panel = vscode.window.createWebviewPanel(
@@ -16,31 +16,43 @@ export function openPromptPanel(
     { enableScripts: true, retainContextWhenHidden: false, localResourceRoots: [] }
   );
 
-  let existingImageSrc = '';
-  if (existing?.imagePath && fs.existsSync(existing.imagePath)) {
-    const ext = path.extname(existing.imagePath).slice(1).toLowerCase();
-    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
-    existingImageSrc = `data:${mime};base64,${fs.readFileSync(existing.imagePath).toString('base64')}`;
+  let existingImagesJson = '[]';
+  const paths = existing?.imagePaths || (existing?.imagePath ? [existing.imagePath] : []);
+  const imgList = [];
+  for (const p of paths) {
+    if (fs.existsSync(p)) {
+      const ext = path.extname(p).slice(1).toLowerCase();
+      const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+      const base64 = `data:${mime};base64,${fs.readFileSync(p).toString('base64')}`;
+      imgList.push({ path: p, base64 });
+    }
   }
+  existingImagesJson = JSON.stringify(imgList);
 
-  panel.webview.html = getHtml(existing, existingImageSrc);
+  panel.webview.html = getHtml(existing, existingImagesJson);
 
   panel.webview.onDidReceiveMessage(async (msg) => {
     if (msg.type === 'cancel') { panel.dispose(); return; }
 
     if (msg.type === 'save') {
-      let imagePath = existing?.imagePath;
+      const imagePaths: string[] = [];
+      const storageDir = context.globalStorageUri.fsPath;
+      const imagesDir = path.join(storageDir, 'images');
+      if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
 
-      if (msg.clearImage) {
-        imagePath = undefined;
-      } else if (msg.imageBase64 && msg.imageType) {
-        const storageDir = context.globalStorageUri.fsPath;
-        const imagesDir = path.join(storageDir, 'images');
-        if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
-        const ext = msg.imageType === 'image/jpeg' ? 'jpg' : 'png';
-        const imgPath = path.join(imagesDir, `${randomUUID()}.${ext}`);
-        fs.writeFileSync(imgPath, Buffer.from(msg.imageBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64'));
-        imagePath = imgPath;
+      if (msg.images && Array.isArray(msg.images)) {
+        for (const img of msg.images) {
+          if (img.path) {
+            // Keep existing image path
+            imagePaths.push(img.path);
+          } else if (img.base64 && img.type) {
+            // Write new image to extension storage
+            const ext = img.type === 'image/jpeg' ? 'jpg' : 'png';
+            const imgPath = path.join(imagesDir, `${randomUUID()}.${ext}`);
+            fs.writeFileSync(imgPath, Buffer.from(img.base64.replace(/^data:image\/\w+;base64,/, ''), 'base64'));
+            imagePaths.push(imgPath);
+          }
+        }
       }
 
       // Auto-generate title from first line / first 40 chars of content or use default for image-only
@@ -49,16 +61,20 @@ export function openPromptPanel(
         ? (firstLine.length > 40 ? firstLine.slice(0, 40) + '…' : firstLine)
         : 'Görsel Prompt';
 
-      await onSave({ title, content: msg.content, imagePath });
+      await onSave({
+        title,
+        content: msg.content,
+        imagePaths,
+        imagePath: imagePaths[0] // Set first image as legacy fallback for backward compatibility
+      });
       panel.dispose();
     }
   }, undefined, context.subscriptions);
 }
 
-function getHtml(existing?: Prompt, existingImageSrc?: string): string {
+function getHtml(existing?: Prompt, existingImagesJson?: string): string {
   const nonce = randomUUID().replace(/-/g, '');
   const safeContent = (existing?.content ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const hasImage = !!existingImageSrc;
 
   return /* html */`<!DOCTYPE html>
 <html lang="tr">
@@ -107,12 +123,12 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
     #paste-zone {
       border: 2px dashed var(--vscode-input-border, rgba(128,128,128,0.5));
       border-radius: 8px;
-      min-height: 90px;
+      min-height: 110px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-direction: column;
-      gap: 8px;
+      gap: 12px;
       transition: border-color 0.15s, background 0.15s;
       position: relative;
       overflow: hidden;
@@ -122,21 +138,54 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
       border-color: var(--vscode-focusBorder);
       background: var(--vscode-list-hoverBackground);
     }
-    #paste-zone.has-image { border-color: var(--vscode-focusBorder); padding: 8px; min-height: unset; }
+    #paste-zone.has-images { border-color: var(--vscode-focusBorder); padding: 12px; min-height: unset; }
     #paste-hint { color: var(--vscode-descriptionForeground); font-size: 0.88em; text-align: center; pointer-events: none; }
     #paste-hint kbd {
       background: var(--vscode-keybindingLabel-background, rgba(128,128,128,0.2));
       border: 1px solid var(--vscode-keybindingLabel-border, rgba(128,128,128,0.4));
       border-radius: 3px; padding: 1px 5px; font-family: monospace;
     }
-    #preview-img { max-width: 100%; max-height: 220px; border-radius: 6px; display: ${hasImage ? 'block' : 'none'}; }
-    #remove-btn {
-      position: absolute; top: 6px; right: 6px;
-      background: var(--vscode-errorForeground); color: #fff;
-      border: none; border-radius: 50%;
-      width: 22px; height: 22px; font-size: 14px;
-      line-height: 22px; text-align: center; cursor: pointer;
-      display: ${hasImage ? 'block' : 'none'}; z-index: 10;
+
+    /* Previews Grid */
+    .previews-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      width: 100%;
+      justify-content: flex-start;
+    }
+    .preview-card {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.4));
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      background: #000;
+    }
+    .preview-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .preview-card .remove-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(230, 50, 50, 0.9);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 11px;
+      line-height: 18px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: bold;
+      padding: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
 
     .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
@@ -160,13 +209,12 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
   </div>
 
   <div class="field">
-    <label>Resim (isteğe bağlı)</label>
+    <label>Resimler (isteğe bağlı)</label>
     <div id="paste-zone">
-      <button id="remove-btn" title="Resmi kaldır">✕</button>
-      <img id="preview-img" src="${existingImageSrc ?? ''}" alt="Önizleme">
+      <div id="previews-container" class="previews-grid" style="display: none;"></div>
       <div id="paste-hint">
-        <div>📋 <kbd>Ctrl+V</kbd> ile panodaki resmi yapıştırın</div>
-        <div style="margin-top:4px;opacity:0.7">ya da PNG / JPG dosyasını buraya sürükleyin</div>
+        <div>📋 <kbd>Ctrl+V</kbd> ile panodaki resimleri yapıştırın</div>
+        <div style="margin-top:4px;opacity:0.7">ya da PNG / JPG dosyalarını buraya sürükleyin</div>
       </div>
     </div>
   </div>
@@ -178,33 +226,69 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
 
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
-    let imageBase64 = ${hasImage ? `"${existingImageSrc}"` : 'null'};
-    let imageType   = ${hasImage ? '"image/png"' : 'null'};
-    let clearImage  = false;
-    const originalHasImage = ${hasImage};
+    
+    // Parse loaded images: Array of { path, base64 }
+    const loadedImages = ${existingImagesJson || '[]'};
+    
+    // Map to active images array: { base64, type, path }
+    let images = loadedImages.map(img => ({
+      base64: img.base64,
+      type: 'image/png',
+      path: img.path
+    }));
 
-    const pasteZone  = document.getElementById('paste-zone');
-    const hint       = document.getElementById('paste-hint');
-    const previewImg = document.getElementById('preview-img');
-    const removeBtn  = document.getElementById('remove-btn');
+    const pasteZone = document.getElementById('paste-zone');
+    const hint      = document.getElementById('paste-hint');
+    const container = document.getElementById('previews-container');
 
-    function showImage(src, type) {
-      imageBase64 = src; imageType = type; clearImage = false;
-      previewImg.src = src; previewImg.style.display = 'block';
-      removeBtn.style.display = 'block'; hint.style.display = 'none';
-      pasteZone.classList.add('has-image');
+    function renderPreviews() {
+      container.innerHTML = '';
+      if (images.length === 0) {
+        container.style.display = 'none';
+        hint.style.display = '';
+        pasteZone.classList.remove('has-images');
+      } else {
+        container.style.display = 'flex';
+        hint.style.display = 'none';
+        pasteZone.classList.add('has-images');
+
+        images.forEach((img, index) => {
+          const card = document.createElement('div');
+          card.className = 'preview-card';
+
+          const imageEl = document.createElement('img');
+          imageEl.src = img.base64;
+          card.appendChild(imageEl);
+
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'remove-badge';
+          removeBtn.innerHTML = '✕';
+          removeBtn.title = 'Resmi Kaldır';
+          removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeImage(index);
+          });
+          card.appendChild(removeBtn);
+
+          container.appendChild(card);
+        });
+      }
     }
 
-    function clearImageFn() {
-      imageBase64 = null; imageType = null; clearImage = originalHasImage;
-      previewImg.src = ''; previewImg.style.display = 'none';
-      removeBtn.style.display = 'none'; hint.style.display = '';
-      pasteZone.classList.remove('has-image');
+    function removeImage(index) {
+      images.splice(index, 1);
+      renderPreviews();
     }
 
-    removeBtn.addEventListener('click', clearImageFn);
+    function addImage(base64, type) {
+      images.push({ base64, type });
+      renderPreviews();
+    }
 
-    // Ctrl+V — Resim yapıştırmayı yakala (içerik alanı odaktayken bile)
+    // Render loaded previews initially
+    renderPreviews();
+
+    // Ctrl+V — Resim yapıştırmayı yakala
     document.addEventListener('paste', (e) => {
       const files = e.clipboardData?.files;
       if (files && files.length > 0) {
@@ -212,11 +296,11 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
           if (file.type.startsWith('image/')) {
             e.preventDefault();
             const reader = new FileReader();
-            reader.onload = (ev) => showImage(ev.target.result, file.type);
+            reader.onload = (ev) => addImage(ev.target.result, file.type);
             reader.readAsDataURL(file);
-            return;
           }
         }
+        return;
       }
 
       const items = e.clipboardData?.items;
@@ -227,7 +311,7 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
           const file = item.getAsFile();
           if (file) {
             const reader = new FileReader();
-            reader.onload = (ev) => showImage(ev.target.result, item.type);
+            reader.onload = (ev) => addImage(ev.target.result, item.type);
             reader.readAsDataURL(file);
           }
           return;
@@ -240,26 +324,32 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
     pasteZone.addEventListener('dragleave', () => pasteZone.classList.remove('hover'));
     pasteZone.addEventListener('drop', (e) => {
       e.preventDefault(); pasteZone.classList.remove('hover');
-      const file = e.dataTransfer?.files?.[0];
-      if (file?.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (ev) => showImage(ev.target.result, file.type);
-        reader.readAsDataURL(file);
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        for (const file of Array.from(files)) {
+          if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (ev) => addImage(ev.target.result, file.type);
+            reader.readAsDataURL(file);
+          }
+        }
       }
     });
 
     document.getElementById('btn-save').addEventListener('click', () => {
       const content = document.getElementById('inp-content').value.trim();
-      const hasImg = !!(imageBase64 && !clearImage);
-      const isValid = content.length > 0 || hasImg;
+      const isValid = content.length > 0 || images.length > 0;
       document.getElementById('err-content').style.display = isValid ? 'none' : 'block';
       if (!isValid) return;
+      
       vscode.postMessage({
         type: 'save',
         content,
-        imageBase64: (imageBase64 && !clearImage) ? imageBase64 : null,
-        imageType,
-        clearImage,
+        images: images.map(img => ({
+          base64: img.base64.startsWith('data:') ? img.base64 : null, // only send base64 data for new unsaved images
+          type: img.type,
+          path: img.path // preserve existing file paths
+        }))
       });
     });
 

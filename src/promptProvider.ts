@@ -12,7 +12,9 @@ export class PromptTreeItem extends vscode.TreeItem {
     this.contextValue = 'prompt';
 
     // Show image icon when imagePath is set
-    if (prompt.imagePath) {
+    // Show image icon when any images are present
+    const hasImages = (prompt.imagePaths && prompt.imagePaths.length > 0) || prompt.imagePath;
+    if (hasImages) {
       this.iconPath = new vscode.ThemeIcon('file-media');
     }
 
@@ -54,11 +56,18 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<PromptTreeIte
     dataTransfer.set('text/plain', new vscode.DataTransferItem(item.prompt.content));
 
     // Attach image data as URI if present
-    if (item.prompt.imagePath) {
+    // Attach image data as URIs if present
+    const paths = item.prompt.imagePaths || (item.prompt.imagePath ? [item.prompt.imagePath] : []);
+    if (paths.length > 0) {
       const fs = require('fs');
-      if (fs.existsSync(item.prompt.imagePath)) {
-        const uri = vscode.Uri.file(item.prompt.imagePath);
-        dataTransfer.set('text/uri-list', new vscode.DataTransferItem(uri.toString()));
+      const uris = [];
+      for (const p of paths) {
+        if (fs.existsSync(p)) {
+          uris.push(vscode.Uri.file(p).toString());
+        }
+      }
+      if (uris.length > 0) {
+        dataTransfer.set('text/uri-list', new vscode.DataTransferItem(uris.join('\r\n')));
       }
     }
   }
