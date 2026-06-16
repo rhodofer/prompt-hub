@@ -14,6 +14,7 @@ export function activate(context: vscode.ExtensionContext): void {
   out.show(true);
 
   const provider = new PromptTreeProvider(context);
+  out.appendLine(`[Prompt Hub] Stored prompts database contents: ${JSON.stringify(getPrompts(context))}`);
   const treeView = vscode.window.createTreeView('promptHubView', {
     treeDataProvider: provider,
     showCollapseAll: false,

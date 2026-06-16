@@ -202,9 +202,8 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
 
     removeBtn.addEventListener('click', clearImageFn);
 
-    // Ctrl+V — sadece içerik alanında DEĞİLKEN resim yakala
+    // Ctrl+V — Resim yapıştırmayı yakala (içerik alanı odaktayken bile)
     document.addEventListener('paste', (e) => {
-      if (document.activeElement?.id === 'inp-content') return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of Array.from(items)) {
