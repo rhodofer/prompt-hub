@@ -55,6 +55,12 @@
         "title": "Delete Prompt",
         "category": "Prompt Hub",
         "icon": "$(trash)"
+      },
+      {
+        "command": "promptHub.openImage",
+        "title": "Open Image",
+        "category": "Prompt Hub",
+        "icon": "$(file-media)"
       }
     ],
     "menus": {

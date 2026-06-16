@@ -16,7 +16,7 @@ export async function addPrompt(context: vscode.ExtensionContext, prompt: Prompt
 export async function updatePrompt(
   context: vscode.ExtensionContext,
   id: string,
-  updates: Partial<Pick<Prompt, 'title' | 'content'>>
+  updates: Partial<Pick<Prompt, 'title' | 'content' | 'imagePath'>>
 ): Promise<void> {
   const prompts = getPrompts(context);
   const idx = prompts.findIndex((p) => p.id === id);

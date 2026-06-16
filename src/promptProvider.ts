@@ -10,11 +10,26 @@ export class PromptTreeItem extends vscode.TreeItem {
       ? prompt.content.slice(0, 60) + '…'
       : prompt.content;
     this.contextValue = 'prompt';
-    this.command = {
-      command: 'promptHub.copyPrompt',
-      title: 'Copy Prompt',
-      arguments: [prompt],
-    };
+
+    // Show image icon when imagePath is set
+    if (prompt.imagePath) {
+      this.iconPath = new vscode.ThemeIcon('file-media');
+    }
+
+    // Click → open image if exists, otherwise copy content
+    if (prompt.imagePath) {
+      this.command = {
+        command: 'promptHub.openImage',
+        title: 'Open Image',
+        arguments: [prompt],
+      };
+    } else {
+      this.command = {
+        command: 'promptHub.copyPrompt',
+        title: 'Copy Prompt',
+        arguments: [prompt],
+      };
+    }
   }
 }
 
