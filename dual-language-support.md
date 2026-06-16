@@ -4,12 +4,12 @@
 Add dual language (English / Turkish) support to the Prompt Hub extension UI, notifications, and webview forms.
 
 ## Tasks
-- [ ] Task 1: Add `promptHub.language` config in `package.json` with values `["auto", "en", "tr"]` (default `"auto"`).
-- [ ] Task 2: Create `src/localization.ts` containing translation dictionaries for English (`en`) and Turkish (`tr`), with helper methods targeting VS Code configuration and `vscode.env.language`.
-- [ ] Task 3: Refactor `src/promptWebview.ts` to load translations and inject localized strings (labels, placeholders, buttons) into the HTML template.
-- [ ] Task 4: Refactor `src/extension.ts` to use localized notifications, dialog titles, and automatically generate either `"Image Prompt"` or `"Görsel Prompt"`.
-- [ ] Task 5: Run `npm run compile` to build the extension and verify TypeScript compiler errors.
-- [ ] Task 6: Commit and push changes to GitHub.
+- [x] Task 1: Add `promptHub.language` config in `package.json` with values `["auto", "en", "tr"]` (default `"auto"`).
+- [x] Task 2: Create `src/localization.ts` containing translation dictionaries for English (`en`) and Turkish (`tr`), with helper methods targeting VS Code configuration and `vscode.env.language`.
+- [x] Task 3: Refactor `src/promptWebview.ts` to load translations and inject localized strings (labels, placeholders, buttons) into the HTML template.
+- [x] Task 4: Refactor `src/extension.ts` to use localized notifications, dialog titles, and automatically generate either `"Image Prompt"` or `"Görsel Prompt"`.
+- [x] Task 5: Run `npm run compile` to build the extension and verify TypeScript compiler errors.
+- [x] Task 6: Commit and push changes to GitHub.
 
 ## Done When
 - The settings include the language option.
