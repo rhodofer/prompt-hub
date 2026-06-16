@@ -18,6 +18,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const treeView = vscode.window.createTreeView('promptHubView', {
     treeDataProvider: provider,
     showCollapseAll: false,
+    dragAndDropController: provider,
   });
   context.subscriptions.push(treeView);
   out.appendLine('[Prompt Hub] TreeView created');

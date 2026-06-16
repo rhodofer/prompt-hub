@@ -25,9 +25,12 @@ export class PromptTreeItem extends vscode.TreeItem {
   }
 }
 
-export class PromptTreeProvider implements vscode.TreeDataProvider<PromptTreeItem> {
+export class PromptTreeProvider implements vscode.TreeDataProvider<PromptTreeItem>, vscode.TreeDragAndDropController<PromptTreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<PromptTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+  public readonly dropMimeTypes = [];
+  public readonly dragMimeTypes = ['text/plain', 'text/uri-list'];
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -41,5 +44,26 @@ export class PromptTreeProvider implements vscode.TreeDataProvider<PromptTreeIte
 
   getChildren(): PromptTreeItem[] {
     return getPrompts(this.context).map((p) => new PromptTreeItem(p));
+  }
+
+  public async handleDrag(source: readonly PromptTreeItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
+    const item = source[0];
+    if (!item) return;
+
+    // Attach text data
+    dataTransfer.set('text/plain', new vscode.DataTransferItem(item.prompt.content));
+
+    // Attach image data as URI if present
+    if (item.prompt.imagePath) {
+      const fs = require('fs');
+      if (fs.existsSync(item.prompt.imagePath)) {
+        const uri = vscode.Uri.file(item.prompt.imagePath);
+        dataTransfer.set('text/uri-list', new vscode.DataTransferItem(uri.toString()));
+      }
+    }
+  }
+
+  public async handleDrop(target: PromptTreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
+    // No-op: we don't handle dropping items into the tree view for now.
   }
 }
