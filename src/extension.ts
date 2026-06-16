@@ -23,6 +23,11 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(treeView);
   out.appendLine('[Prompt Hub] TreeView created');
 
+  vscode.commands.getCommands(true).then(cmds => {
+    const chatCmds = cmds.filter(c => c.toLowerCase().includes('chat') || c.toLowerCase().includes('antigravity') || c.toLowerCase().includes('copilot'));
+    out.appendLine(`\n[Prompt Hub] POTENTIAL CHAT COMMANDS:\n${chatCmds.join('\n')}\n`);
+  });
+
   // ── Add Prompt (opens Webview panel) ─────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand('promptHub.addPrompt', () => {
@@ -45,38 +50,51 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // ── Copy Prompt ───────────────────────────────────────────────────────────
+  // ── Copy / Send Prompt ────────────────────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand('promptHub.copyPrompt', async (promptOrItem: Prompt | PromptTreeItem) => {
       const prompt = 'prompt' in promptOrItem ? promptOrItem.prompt : promptOrItem;
 
+      // 1. Resmi panoya kopyala (varsa)
+      let imageCopied = false;
       if (prompt.imagePath && fs.existsSync(prompt.imagePath)) {
         try {
-          // 1. Önce resmi panoya kopyala
           await copyImageToClipboard(prompt.imagePath);
-          
-          // 2. Windows Pano Geçmişi (Win+V) için kısa bir bekleme süresi
-          await new Promise(r => setTimeout(r, 400));
-          
-          // 3. Sonra metni kopyala
-          await vscode.env.clipboard.writeText(prompt.content);
-
-          try {
-            await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(prompt.imagePath), {
-              viewColumn: vscode.ViewColumn.Beside,
-              preserveFocus: true,
-            });
-            vscode.window.showInformationMessage(`📋 Sırayla resim ve metin kopyalandı (Win+V). 🖼️ Yan tarafta açıldı.`);
-          } catch {
-            vscode.window.showInformationMessage(`📋 Sırayla resim ve metin panoya kopyalandı (Win+V).`);
-          }
+          imageCopied = true;
         } catch (err) {
           out.appendLine(`[Prompt Hub] Failed to copy image to clipboard: ${String(err)}`);
-          await vscode.env.clipboard.writeText(prompt.content);
-          vscode.window.showWarningMessage(`📋 Sadece metin kopyalandı (Resim panoya yazılırken hata oluştu).`);
         }
-      } else {
+      }
+
+      // 2. Metni Antigravity Chat paneline aktarmayı dene
+      let sentToChat = false;
+      const cmds = await vscode.commands.getCommands();
+      
+      try {
+        if (cmds.includes('antigravity.sendPromptToAgentPanel')) {
+          await vscode.commands.executeCommand('antigravity.sendPromptToAgentPanel', prompt.content);
+          sentToChat = true;
+        } else if (cmds.includes('workbench.action.chat.open')) {
+          await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt.content });
+          sentToChat = true;
+        }
+      } catch (err) {
+        out.appendLine(`[Prompt Hub] Chat paneline aktarma başarisiz: ${String(err)}`);
+      }
+
+      // 3. Eğer chat paneline aktarılamadıysa klasik kopyalama yap
+      if (!sentToChat) {
         await vscode.env.clipboard.writeText(prompt.content);
+      }
+
+      // 4. Kullanıcıyı bilgilendir
+      if (sentToChat && imageCopied) {
+        vscode.window.showInformationMessage(`🚀 Metin Chat'e aktarıldı! Lütfen Chat kutusundayken resmi eklemek için 'Ctrl+V' yapın.`);
+      } else if (sentToChat) {
+        vscode.window.showInformationMessage(`🚀 Metin doğrudan Chat paneline aktarıldı.`);
+      } else if (imageCopied) {
+        vscode.window.showInformationMessage(`📋 Sırayla resim ve metin kopyalandı (Win+V).`);
+      } else {
         vscode.window.showInformationMessage(`📋 "${prompt.title}" kopyalandı.`);
       }
     })
