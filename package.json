@@ -83,6 +83,21 @@
           "group": "inline"
         }
       ]
+    },
+    "configuration": {
+      "title": "Prompt Hub Settings",
+      "properties": {
+        "promptHub.language": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "en",
+            "tr"
+          ],
+          "default": "auto",
+          "description": "Preferred language for Prompt Hub UI. 'auto' matches the VS Code display language."
+        }
+      }
     }
   },
   "scripts": {

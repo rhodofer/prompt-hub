@@ -3,15 +3,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { Prompt } from './types';
+import { getTranslations, TranslationBundle } from './localization';
 
 export function openPromptPanel(
   context: vscode.ExtensionContext,
   onSave: (data: { title: string; content: string; imagePath?: string; imagePaths?: string[] }) => Promise<void>,
   existing?: Prompt
 ): void {
+  const t = getTranslations();
   const panel = vscode.window.createWebviewPanel(
     'promptHub.form',
-    existing ? 'Edit Prompt' : 'New Prompt',
+    existing ? t.webviewTitleEdit : t.webviewTitleNew,
     vscode.ViewColumn.One,
     { enableScripts: true, retainContextWhenHidden: false, localResourceRoots: [] }
   );
@@ -29,7 +31,7 @@ export function openPromptPanel(
   }
   existingImagesJson = JSON.stringify(imgList);
 
-  panel.webview.html = getHtml(existing, existingImagesJson);
+  panel.webview.html = getHtml(t, existing, existingImagesJson);
 
   panel.webview.onDidReceiveMessage(async (msg) => {
     if (msg.type === 'cancel') { panel.dispose(); return; }
@@ -59,7 +61,7 @@ export function openPromptPanel(
       const firstLine = (msg.content as string).split('\n')[0].trim();
       const title = firstLine
         ? (firstLine.length > 40 ? firstLine.slice(0, 40) + '…' : firstLine)
-        : 'Görsel Prompt';
+        : t.defaultImageTitle;
 
       await onSave({
         title,
@@ -72,7 +74,7 @@ export function openPromptPanel(
   }, undefined, context.subscriptions);
 }
 
-function getHtml(existing?: Prompt, existingImagesJson?: string): string {
+function getHtml(t: TranslationBundle, existing?: Prompt, existingImagesJson?: string): string {
   const nonce = randomUUID().replace(/-/g, '');
   const safeContent = (existing?.content ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -82,7 +84,7 @@ function getHtml(existing?: Prompt, existingImagesJson?: string): string {
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; img-src data: blob:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${existing ? 'Edit Prompt' : 'New Prompt'}</title>
+  <title>${existing ? t.webviewTitleEdit : t.webviewTitleNew}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -200,28 +202,28 @@ function getHtml(existing?: Prompt, existingImagesJson?: string): string {
   </style>
 </head>
 <body>
-  <h1>${existing ? '✏️ Edit Prompt' : '📝 New Prompt'}</h1>
+  <h1>${existing ? t.webviewTitleEdit : t.webviewTitleNew}</h1>
 
   <div class="field">
-    <label for="inp-content">Prompt</label>
-    <textarea id="inp-content" placeholder="Prompt metnini buraya yazın veya yapıştırın…">${safeContent}</textarea>
-    <div class="error" id="err-content">En az bir prompt metni veya görsel eklemelisiniz.</div>
+    <label for="inp-content">${t.textareaLabel}</label>
+    <textarea id="inp-content" placeholder="${t.textareaPlaceholder}">${safeContent}</textarea>
+    <div class="error" id="err-content">${t.emptyError}</div>
   </div>
 
   <div class="field">
-    <label>Resimler (isteğe bağlı)</label>
+    <label>${t.imagesLabel}</label>
     <div id="paste-zone">
       <div id="previews-container" class="previews-grid" style="display: none;"></div>
       <div id="paste-hint">
-        <div>📋 <kbd>Ctrl+V</kbd> ile panodaki resimleri yapıştırın</div>
-        <div style="margin-top:4px;opacity:0.7">ya da PNG / JPG dosyalarını buraya sürükleyin</div>
+        <div>${t.pasteZoneHintCtrlV}</div>
+        <div style="margin-top:4px;opacity:0.7">${t.pasteZoneHintDrag}</div>
       </div>
     </div>
   </div>
 
   <div class="actions">
-    <button class="secondary" id="btn-cancel">İptal</button>
-    <button class="primary" id="btn-save">💾 Kaydet</button>
+    <button class="secondary" id="btn-cancel">${t.cancelButton}</button>
+    <button class="primary" id="btn-save">${t.saveButton}</button>
   </div>
 
   <script nonce="${nonce}">
@@ -263,7 +265,7 @@ function getHtml(existing?: Prompt, existingImagesJson?: string): string {
           const removeBtn = document.createElement('button');
           removeBtn.className = 'remove-badge';
           removeBtn.innerHTML = '✕';
-          removeBtn.title = 'Resmi Kaldır';
+          removeBtn.title = "${t.removeImageTooltip}";
           removeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             removeImage(index);

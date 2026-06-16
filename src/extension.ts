@@ -6,6 +6,8 @@ import { Prompt } from './types';
 import { openPromptPanel } from './promptWebview';
 import { exec } from 'child_process';
 import * as fs from 'fs';
+import * as path from 'path';
+import { getTranslations } from './localization';
 
 export function activate(context: vscode.ExtensionContext): void {
   const out = vscode.window.createOutputChannel('Prompt Hub');
@@ -43,9 +45,18 @@ export function activate(context: vscode.ExtensionContext): void {
         await addPrompt(context, prompt);
         const all = getPrompts(context);
         out.appendLine(`[Prompt Hub] saved. Total: ${all.length}`);
-        vscode.window.showInformationMessage(
-          `✅ "${prompt.title}" added${(prompt.imagePaths && prompt.imagePaths.length > 0) ? ` with ${prompt.imagePaths.length} images 🖼️` : ''}.`
-        );
+        const t = getTranslations();
+        if (prompt.imagePaths && prompt.imagePaths.length > 0) {
+          vscode.window.showInformationMessage(
+            t.addedWithImagesNotification
+              .replace('{title}', prompt.title)
+              .replace('{count}', String(prompt.imagePaths.length))
+          );
+        } else {
+          vscode.window.showInformationMessage(
+            t.addedNotification.replace('{title}', prompt.title)
+          );
+        }
         provider.refresh();
       });
     })
@@ -128,39 +139,43 @@ export function activate(context: vscode.ExtensionContext): void {
         out.appendLine('[Prompt Hub] Görseller otomatik eklendi ve metin olmadığı için yapıştırma simülasyonu atlanıyor.');
       }
       
-      // 5. Kullanıcıyı bilgilendir
+      // 5. Notify user
+      const t = getTranslations();
       if (imageAttachedAuto) {
-        const countStr = imagesAttachedAutoCount > 1 ? `${imagesAttachedAutoCount} görsel` : 'Görsel';
+        const countStr = t.defaultImageTitle === 'Görsel Prompt'
+          ? (imagesAttachedAutoCount > 1 ? `${imagesAttachedAutoCount} görsel` : 'Görsel')
+          : (imagesAttachedAutoCount > 1 ? `${imagesAttachedAutoCount} images` : 'Image');
         if (prompt.content) {
-          vscode.window.showInformationMessage(`🚀 ${countStr} ve metin Chat kutusuna otomatik eklendi!`);
+          vscode.window.showInformationMessage(t.autoAddedNotification.replace('{countStr}', countStr));
         } else {
-          vscode.window.showInformationMessage(`🚀 ${countStr} Chat kutusuna otomatik eklendi!`);
+          vscode.window.showInformationMessage(t.autoAddedImagesNotification.replace('{countStr}', countStr));
         }
       } else if (firstImageCopied) {
         if (prompt.content) {
-          vscode.window.showInformationMessage(`🚀 Metin Chat kutusuna eklendi, ilk resmi yapıştırmak için Win+V yapabilirsiniz.`);
+          vscode.window.showInformationMessage(t.copyTextImageNotification);
         } else {
-          vscode.window.showInformationMessage(`🚀 İlk resim panoya kopyalandı, yapıştırmak için Win+V veya Ctrl+V yapabilirsiniz.`);
+          vscode.window.showInformationMessage(t.copyFirstImageNotification);
         }
       } else {
-        vscode.window.showInformationMessage(`🚀 "${prompt.title}" Chat kutusuna eklendi!`);
+        vscode.window.showInformationMessage(t.copiedNotification.replace('{title}', prompt.title));
       }
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('promptHub.openImage', async (prompt: Prompt) => {
+      const t = getTranslations();
       const paths = (prompt as any).imagePaths || (prompt.imagePath ? [prompt.imagePath] : []);
       if (paths.length === 0) {
         await vscode.env.clipboard.writeText(prompt.content);
-        vscode.window.showInformationMessage(`📋 "${prompt.title}" copied.`);
+        vscode.window.showInformationMessage(t.copiedNotification.replace('{title}', prompt.title));
         return;
       }
       for (const p of paths) {
         try {
           await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(p));
         } catch (err) {
-          vscode.window.showErrorMessage(`Cannot open image ${path.basename(p)}: ${String(err)}`);
+          vscode.window.showErrorMessage(t.cannotOpenImage.replace('{name}', path.basename(p)).replace('{err}', String(err)));
         }
       }
     })
@@ -169,6 +184,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── Edit Prompt (opens Webview panel) ────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand('promptHub.editPrompt', (item: PromptTreeItem) => {
+      const t = getTranslations();
       openPromptPanel(
         context,
         async (data) => {
@@ -179,7 +195,7 @@ export function activate(context: vscode.ExtensionContext): void {
             imagePaths: data.imagePaths,
           });
           provider.refresh();
-          vscode.window.showInformationMessage('✏️ Prompt updated.');
+          vscode.window.showInformationMessage(t.updatedNotification);
         },
         item.prompt
       );
@@ -189,15 +205,16 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── Delete Prompt ─────────────────────────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand('promptHub.deletePrompt', async (item: PromptTreeItem) => {
+      const t = getTranslations();
       const ok = await vscode.window.showWarningMessage(
-        `Delete "${item.prompt.title}"?`,
+        t.deleteConfirmTitle.replace('{title}', item.prompt.title),
         { modal: true },
-        'Delete'
+        t.deleteConfirmButton
       );
-      if (ok !== 'Delete') return;
+      if (ok !== t.deleteConfirmButton) return;
       await deletePrompt(context, item.prompt.id);
       provider.refresh();
-      vscode.window.showInformationMessage('🗑️ Prompt deleted.');
+      vscode.window.showInformationMessage(t.deletedNotification);
     })
   );
 }
