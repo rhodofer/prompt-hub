@@ -46,7 +46,21 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('promptHub.copyPrompt', async (promptOrItem: Prompt | PromptTreeItem) => {
       const prompt = 'prompt' in promptOrItem ? promptOrItem.prompt : promptOrItem;
       await vscode.env.clipboard.writeText(prompt.content);
-      vscode.window.showInformationMessage(`📋 "${prompt.title}" copied.`);
+
+      if (prompt.imagePath) {
+        // Copy text + open image side by side
+        try {
+          await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(prompt.imagePath), {
+            viewColumn: vscode.ViewColumn.Beside,
+            preserveFocus: true,
+          });
+          vscode.window.showInformationMessage(`📋 Prompt kopyalandı + 🖼️ Resim açıldı.`);
+        } catch {
+          vscode.window.showInformationMessage(`📋 "${prompt.title}" kopyalandı.`);
+        }
+      } else {
+        vscode.window.showInformationMessage(`📋 "${prompt.title}" kopyalandı.`);
+      }
     })
   );
 
