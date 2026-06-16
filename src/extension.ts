@@ -90,10 +90,6 @@ export function activate(context: vscode.ExtensionContext): void {
         out.appendLine('[Prompt Hub] Yan panel odaklanıyor (antigravity.agentSidePanel.focus)...');
         await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
       }
-      if (cmds.includes('antigravity.toggleChatFocus')) {
-        out.appendLine('[Prompt Hub] Chat girdi kutusu odaklanıyor (antigravity.toggleChatFocus)...');
-        await vscode.commands.executeCommand('antigravity.toggleChatFocus');
-      }
 
       const delay = prompt.imagePath ? 250 : 400;
       out.appendLine(`[Prompt Hub] Yapıştırma gecikmesi: ${delay}ms`);
