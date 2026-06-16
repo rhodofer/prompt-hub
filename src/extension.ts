@@ -80,14 +80,24 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
 
-      // 3. Metni sadece panoya kopyala (otomatik gönderimi engellemek için)
+      // 3. Metni panoya kopyala
       await vscode.env.clipboard.writeText(prompt.content);
 
-      // 4. Kullanıcıyı bilgilendir
-      if (imageAttachedAuto) {
-        vscode.window.showInformationMessage(`🚀 Resim eklendi! Metni yapıştırmak için Chat kutusunda 'Ctrl+V' yapın.`);
-      } else if (imageCopied) {
-        vscode.window.showInformationMessage(`📋 Sırayla resim ve metin kopyalandı (Win+V).`);
+      // 4. Chat alanını odakla ve 250ms sonra otomatik Ctrl+V yap
+      if (imageAttachedAuto || imageCopied) {
+        if (cmds.includes('antigravity.agentSidePanel.focus')) {
+          await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
+        } else if (cmds.includes('antigravity.toggleChatFocus')) {
+          await vscode.commands.executeCommand('antigravity.toggleChatFocus');
+        }
+
+        setTimeout(() => {
+          simulateCtrlV().catch(err => {
+            out.appendLine(`[Prompt Hub] Auto Ctrl+V failed: ${String(err)}`);
+          });
+        }, 250);
+        
+        vscode.window.showInformationMessage(`🚀 Resim eklendi ve metin otomatik yapıştırıldı!`);
       } else {
         vscode.window.showInformationMessage(`📋 "${prompt.title}" kopyalandı.`);
       }
@@ -174,6 +184,18 @@ if (Test-Path $imagePath) {
         resolve();
       }
     });
+  });
+}
+
+async function simulateCtrlV(): Promise<void> {
+  if (process.platform !== 'win32') return;
+  return new Promise((resolve) => {
+    const psScript = `
+$wshell = New-Object -ComObject wscript.shell
+$wshell.SendKeys('^v')
+`;
+    const encoded = Buffer.from(psScript, 'utf16le').toString('base64');
+    exec(`powershell -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand ${encoded}`, () => resolve());
   });
 }
 
