@@ -18,7 +18,7 @@
         {
           "id": "promptHubContainer",
           "title": "Prompt Hub",
-          "icon": "$(note)"
+          "icon": "./media/icon.svg"
         }
       ]
     },
@@ -27,7 +27,6 @@
         {
           "id": "promptHubView",
           "name": "My Prompts",
-          "icon": "$(note)",
           "contextualTitle": "Prompt Hub"
         }
       ]
