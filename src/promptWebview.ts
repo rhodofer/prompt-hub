@@ -43,9 +43,11 @@ export function openPromptPanel(
         imagePath = imgPath;
       }
 
-      // Auto-generate title from first line / first 40 chars of content
+      // Auto-generate title from first line / first 40 chars of content or use default for image-only
       const firstLine = (msg.content as string).split('\n')[0].trim();
-      const title = firstLine.length > 40 ? firstLine.slice(0, 40) + '…' : firstLine;
+      const title = firstLine
+        ? (firstLine.length > 40 ? firstLine.slice(0, 40) + '…' : firstLine)
+        : 'Görsel Prompt';
 
       await onSave({ title, content: msg.content, imagePath });
       panel.dispose();
@@ -154,7 +156,7 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
   <div class="field">
     <label for="inp-content">Prompt</label>
     <textarea id="inp-content" placeholder="Prompt metnini buraya yazın veya yapıştırın…">${safeContent}</textarea>
-    <div class="error" id="err-content">Prompt içeriği gerekli.</div>
+    <div class="error" id="err-content">En az bir prompt metni veya görsel eklemelisiniz.</div>
   </div>
 
   <div class="field">
@@ -248,8 +250,10 @@ function getHtml(existing?: Prompt, existingImageSrc?: string): string {
 
     document.getElementById('btn-save').addEventListener('click', () => {
       const content = document.getElementById('inp-content').value.trim();
-      document.getElementById('err-content').style.display = content ? 'none' : 'block';
-      if (!content) return;
+      const hasImg = !!(imageBase64 && !clearImage);
+      const isValid = content.length > 0 || hasImg;
+      document.getElementById('err-content').style.display = isValid ? 'none' : 'block';
+      if (!isValid) return;
       vscode.postMessage({
         type: 'save',
         content,

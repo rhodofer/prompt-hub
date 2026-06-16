@@ -80,8 +80,10 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
 
-      // 3. Metni panoya kopyala
-      await vscode.env.clipboard.writeText(prompt.content);
+      // 3. Metni panoya kopyala (sadece metin varsa)
+      if (prompt.content) {
+        await vscode.env.clipboard.writeText(prompt.content);
+      }
 
       // 4. Chat alanını her durumda odakla ve otomatik Ctrl+V yap
       out.appendLine(`[Prompt Hub] copyPrompt: prompt clicked: "${prompt.title}" (görsel: ${!!prompt.imagePath})`);
@@ -101,21 +103,34 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
 
-      const delay = prompt.imagePath ? 250 : 400;
-      out.appendLine(`[Prompt Hub] Yapıştırma gecikmesi: ${delay}ms`);
+      const shouldPaste = prompt.content || (prompt.imagePath && !imageAttachedAuto);
+      if (shouldPaste) {
+        const delay = prompt.imagePath ? 250 : 400;
+        out.appendLine(`[Prompt Hub] Yapıştırma gecikmesi: ${delay}ms`);
 
-      setTimeout(() => {
-        out.appendLine('[Prompt Hub] Ctrl+V simüle ediliyor...');
-        simulateCtrlV().catch(err => {
-          out.appendLine(`[Prompt Hub] Auto Ctrl+V failed: ${String(err)}`);
-        });
-      }, delay);
+        setTimeout(() => {
+          out.appendLine('[Prompt Hub] Ctrl+V simüle ediliyor...');
+          simulateCtrlV().catch(err => {
+            out.appendLine(`[Prompt Hub] Auto Ctrl+V failed: ${String(err)}`);
+          });
+        }, delay);
+      } else {
+        out.appendLine('[Prompt Hub] Görsel otomatik eklendi ve metin olmadığı için yapıştırma simülasyonu atlanıyor.');
+      }
       
       // 5. Kullanıcıyı bilgilendir
       if (imageAttachedAuto) {
-        vscode.window.showInformationMessage(`🚀 Resim ve metin Chat kutusuna otomatik eklendi!`);
+        if (prompt.content) {
+          vscode.window.showInformationMessage(`🚀 Resim ve metin Chat kutusuna otomatik eklendi!`);
+        } else {
+          vscode.window.showInformationMessage(`🚀 Resim Chat kutusuna otomatik eklendi!`);
+        }
       } else if (imageCopied) {
-        vscode.window.showInformationMessage(`🚀 Metin Chat kutusuna eklendi, resmi yapıştırmak için Win+V yapabilirsiniz.`);
+        if (prompt.content) {
+          vscode.window.showInformationMessage(`🚀 Metin Chat kutusuna eklendi, resmi yapıştırmak için Win+V yapabilirsiniz.`);
+        } else {
+          vscode.window.showInformationMessage(`🚀 Resim panoya kopyalandı, yapıştırmak için Win+V veya Ctrl+V yapabilirsiniz.`);
+        }
       } else {
         vscode.window.showInformationMessage(`🚀 "${prompt.title}" Chat kutusuna eklendi!`);
       }
