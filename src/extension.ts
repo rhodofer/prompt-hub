@@ -86,13 +86,19 @@ export function activate(context: vscode.ExtensionContext): void {
       // 4. Chat alanını her durumda odakla ve otomatik Ctrl+V yap
       out.appendLine(`[Prompt Hub] copyPrompt: prompt clicked: "${prompt.title}" (görsel: ${!!prompt.imagePath})`);
 
-      if (cmds.includes('antigravity.agentSidePanel.focus')) {
-        out.appendLine('[Prompt Hub] Yan panel odaklanıyor (antigravity.agentSidePanel.focus)...');
-        await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
-      }
-      if (cmds.includes('workbench.panel.chat.view.copilot.focus')) {
-        out.appendLine('[Prompt Hub] Chat girdi kutusu odaklanıyor (workbench.panel.chat.view.copilot.focus)...');
-        await vscode.commands.executeCommand('workbench.panel.chat.view.copilot.focus');
+      if (prompt.imagePath) {
+        if (cmds.includes('antigravity.agentSidePanel.focus')) {
+          out.appendLine('[Prompt Hub] Yan panel odaklanıyor (antigravity.agentSidePanel.focus)...');
+          await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
+        }
+      } else {
+        if (cmds.includes('antigravity.toggleChatFocus')) {
+          out.appendLine('[Prompt Hub] Chat girdi kutusu odaklanıyor (antigravity.toggleChatFocus)...');
+          await vscode.commands.executeCommand('antigravity.toggleChatFocus');
+        } else if (cmds.includes('antigravity.agentSidePanel.focus')) {
+          out.appendLine('[Prompt Hub] Yan panel odaklanıyor (antigravity.agentSidePanel.focus)...');
+          await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
+        }
       }
 
       const delay = prompt.imagePath ? 250 : 400;
