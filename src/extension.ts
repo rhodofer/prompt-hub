@@ -51,15 +51,23 @@ export function activate(context: vscode.ExtensionContext): void {
 
       if (prompt.imagePath && fs.existsSync(prompt.imagePath)) {
         try {
-          await copyTextAndImageToClipboard(prompt.content, prompt.imagePath);
+          // 1. Önce resmi panoya kopyala
+          await copyImageToClipboard(prompt.imagePath);
+          
+          // 2. Windows Pano Geçmişi (Win+V) için kısa bir bekleme süresi
+          await new Promise(r => setTimeout(r, 400));
+          
+          // 3. Sonra metni kopyala
+          await vscode.env.clipboard.writeText(prompt.content);
+
           try {
             await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(prompt.imagePath), {
               viewColumn: vscode.ViewColumn.Beside,
               preserveFocus: true,
             });
-            vscode.window.showInformationMessage(`📋 Prompt ve resim kopyalandı + 🖼️ Yan tarafta açıldı.`);
+            vscode.window.showInformationMessage(`📋 Sırayla resim ve metin kopyalandı (Win+V). 🖼️ Yan tarafta açıldı.`);
           } catch {
-            vscode.window.showInformationMessage(`📋 Prompt ve resim panoya kopyalandı.`);
+            vscode.window.showInformationMessage(`📋 Sırayla resim ve metin panoya kopyalandı (Win+V).`);
           }
         } catch (err) {
           out.appendLine(`[Prompt Hub] Failed to copy image to clipboard: ${String(err)}`);
@@ -124,26 +132,21 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
-async function copyTextAndImageToClipboard(text: string, imagePath: string): Promise<void> {
+async function copyImageToClipboard(imagePath: string): Promise<void> {
   if (process.platform !== 'win32') {
     throw new Error('Clipboard image copying is only supported on Windows.');
   }
 
   return new Promise((resolve, reject) => {
-    const textBase64 = Buffer.from(text, 'utf8').toString('base64');
     const imagePathBase64 = Buffer.from(imagePath, 'utf8').toString('base64');
 
     const psScript = `
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
-$text = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${textBase64}'))
 $imagePath = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${imagePathBase64}'))
 if (Test-Path $imagePath) {
     $image = [System.Drawing.Image]::FromFile($imagePath)
-    $dataObject = New-Object System.Windows.Forms.DataObject
-    $dataObject.SetData([System.Windows.Forms.DataFormats]::UnicodeText, $text)
-    $dataObject.SetData([System.Windows.Forms.DataFormats]::Bitmap, $image)
-    [System.Windows.Forms.Clipboard]::SetDataObject($dataObject, $true)
+    [System.Windows.Forms.Clipboard]::SetImage($image)
     $image.Dispose()
 } else {
     throw "Image path not found"
