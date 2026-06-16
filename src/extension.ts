@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { randomUUID } from 'crypto';
 import { PromptTreeProvider, PromptTreeItem } from './promptProvider';
 import { addPrompt, updatePrompt, deletePrompt } from './promptManager';
 import { Prompt } from './types';
@@ -26,7 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!content?.trim()) return;
 
       const prompt: Prompt = {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         title: title.trim(),
         content: content.trim(),
       };
