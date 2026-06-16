@@ -115,7 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const shouldPaste = prompt.content || (hasImages && !imageAttachedAuto);
       if (shouldPaste) {
-        const delay = hasImages ? 250 : 400;
+        const delay = hasImages ? 150 : 200;
         out.appendLine(`[Prompt Hub] Yapıştırma gecikmesi: ${delay}ms`);
 
         setTimeout(() => {
