@@ -83,18 +83,27 @@ export function activate(context: vscode.ExtensionContext): void {
       // 3. Metni panoya kopyala
       await vscode.env.clipboard.writeText(prompt.content);
 
-      // 4. Chat alanını her durumda odakla ve 250ms sonra otomatik Ctrl+V yap
+      // 4. Chat alanını her durumda odakla ve otomatik Ctrl+V yap
+      out.appendLine(`[Prompt Hub] copyPrompt: prompt clicked: "${prompt.title}" (görsel: ${!!prompt.imagePath})`);
+
       if (cmds.includes('antigravity.agentSidePanel.focus')) {
+        out.appendLine('[Prompt Hub] Yan panel odaklanıyor (antigravity.agentSidePanel.focus)...');
         await vscode.commands.executeCommand('antigravity.agentSidePanel.focus');
-      } else if (cmds.includes('antigravity.toggleChatFocus')) {
+      }
+      if (cmds.includes('antigravity.toggleChatFocus')) {
+        out.appendLine('[Prompt Hub] Chat girdi kutusu odaklanıyor (antigravity.toggleChatFocus)...');
         await vscode.commands.executeCommand('antigravity.toggleChatFocus');
       }
 
+      const delay = prompt.imagePath ? 250 : 400;
+      out.appendLine(`[Prompt Hub] Yapıştırma gecikmesi: ${delay}ms`);
+
       setTimeout(() => {
+        out.appendLine('[Prompt Hub] Ctrl+V simüle ediliyor...');
         simulateCtrlV().catch(err => {
           out.appendLine(`[Prompt Hub] Auto Ctrl+V failed: ${String(err)}`);
         });
-      }, 250);
+      }, delay);
       
       // 5. Kullanıcıyı bilgilendir
       if (imageAttachedAuto) {
