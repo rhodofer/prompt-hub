@@ -1,62 +1,86 @@
-# Prompt Hub
+# Prompt Hub 🚀
 
-Prompt Hub, VS Code içerisinde sık kullandığınız promptları (metin ve resim destekli olarak) kaydetmenizi, yönetmenizi ve AI asistanlarına (Antigravity IDE, GitHub Copilot vb.) tek tıkla aktarmanızı sağlayan güçlü bir eklentidir.
+Save, organize, and instantly copy your reusable AI prompts (with text and image support) from a dedicated VS Code sidebar directly into AI chat assistants.
 
-## Özellikler
+---
 
-* **Prompt Kaydetme:** Sık kullandığınız komut dizilerini (prompt) başlıklarıyla beraber saklayabilirsiniz.
-* **Resim Desteği:** Promptlarınıza ekran görüntüleri veya resim dosyaları iliştirebilirsiniz (Clipboard'dan veya dosyadan sürükle/bırak/yapıştır desteği).
-* **AI Chat Entegrasyonu:** Kaydettiğiniz prompta tek tıkladığınızda:
-  * Resim eklentisi otomatik olarak arka planda sohbete (Antigravity IDE) bir "bağlam (context)" dosyası olarak iliştirilir.
-  * Prompt metniniz panoya kopyalanır.
-  * Chat alanında sadece `Ctrl+V` (Yapıştır) yaparak kontrolü kaybetmeden mesajınızı hazırlayabilirsiniz.
-* **Sürükle ve Bırak (Drag & Drop):** İsterseniz listeden bir promptu tutup doğrudan chat penceresinin içine sürükleyerek de aktarım sağlayabilirsiniz.
+## ✨ Features
 
-## Kurulum (Yerel Kullanım İçin)
+- **📁 Prompt Management:** Save your recurring and complex AI prompt templates with custom titles and content.
+- **🖼️ Multimodal Support:** Attach screenshots and image files to your prompts via clipboard paste (`Ctrl+V`), drag & drop, or file browsing.
+- **🤖 Deep AI Chat Integration:**
+  - **Auto Context Attachment:** Images are automatically attached as a "context" file in supported chat panels (e.g., Antigravity IDE).
+  - **Clipboard Copying:** Prompt text is instantly copied to the clipboard.
+  - **Smart Pasting:** Simulates `Ctrl+V` after a customizable delay, automatically pasting your prompt into the active chat input field.
+- **🖱️ Drag & Drop:** Drag prompt items directly from the sidebar tree view and drop them into any active text editor or chat pane.
+- **✅ Archiving Completed Prompts:** Mark prompts as completed to archive them in a separate view, maintaining a clean and focused workspace.
+- **🌐 Dual-Language UI:** Built-in localization support for English and Turkish, auto-detecting your VS Code display language or allowing manual override.
 
-Bu eklenti henüz VS Code Marketplace'te yayınlanmadığı için, yerel (local) ortamda klasör olarak kullanabilir veya bir `.vsix` dosyası halinde paketleyip kurabilirsiniz.
+---
 
-### Yöntem 1: Kaynak Koddan Doğrudan Kullanım (Geliştirici Modu)
-1. Bu projeyi bilgisayarınıza klonlayın veya indirin.
-2. Proje klasörünü VS Code ile açın.
-3. Terminali açın ve bağımlılıkları yükleyin:
+## 🛠️ Installation
+
+Since Prompt Hub is under local development, you can use or install it with the following methods:
+
+### Method 1: Run via Extension Development Host (Developer Mode)
+
+1. Clone or download this repository.
+2. Open the project folder in VS Code.
+3. Open the terminal and install the dependencies:
    ```bash
    npm install
    ```
-4. Kodu derleyin:
+4. Compile the source code:
    ```bash
    npm run compile
    ```
-5. Klavyeden `F5` tuşuna basarak eklentiyi "Extension Development Host" adlı yeni bir pencerede test edebilir ve kullanabilirsiniz.
+5. Press `F5` to start debugging. A new **Extension Development Host** window will open with the extension loaded.
 
-### Yöntem 2: Kendi VS Code'unuza Kalıcı Kurulum (.vsix Paketleme)
-Eklentiyi kalıcı olarak kendi ana VS Code'unuza kurmak isterseniz:
-1. Terminalde `vsce` (VS Code Extension Manager) aracını global olarak kurun:
+### Method 2: Build & Install VSIX Package (Permanent Local Installation)
+
+1. Install `vsce` (VS Code Extension Manager) globally:
    ```bash
    npm install -g @vscode/vsce
    ```
-2. Proje dizininde eklentiyi paketleyin:
+2. Run the packaging command in the root folder:
    ```bash
    vsce package
    ```
-   *Bu komut, bulunduğunuz klasöre `prompt-hub-1.0.0.vsix` adında bir dosya oluşturacaktır.*
-3. VS Code'da sol menüden **Extensions (Eklentiler)** sekmesini açın.
-4. Üstteki üç noktaya (`...`) tıklayın ve **"Install from VSIX..."** seçeneğini seçin.
-5. Oluşturduğunuz `.vsix` dosyasını seçerek kurulumu tamamlayın.
+   *This command creates a `prompt-hub-1.0.0.vsix` file in the root directory.*
+3. Open the VS Code **Extensions** view (`Ctrl+Shift+X`).
+4. Click the ellipsis button (`...`) at the top right of the Extensions view.
+5. Select **Install from VSIX...**, and choose the generated `.vsix` file.
 
-## Nasıl Kullanılır?
+---
 
-1. VS Code yan menüsünde (veya alt panelde) **"Prompt Hub"** sekmesini bulun.
-2. Yeni bir prompt eklemek için başlığın yanındaki **`+`** (Add Prompt) butonuna tıklayın.
-3. Açılan web görünümünde (webview) başlığı ve metninizi girin.
-4. *(İsteğe Bağlı)* Resim eklemek isterseniz, aldığınız ekran görüntüsünü sayfaya `Ctrl+V` ile yapıştırın.
-5. **Save** butonuna basarak kaydedin.
-6. Kaydettiğiniz prompta listeden tıkladığınızda, resim varsa otomatik olarak chat eklentisi olarak bağlanır ve metin kopyalanır. Ardından chat kutusuna girip `Ctrl+V` yaparak mesajı tamamlayabilirsiniz.
+## 💡 How to Use
 
-## Gereksinimler
+1. Click the **Prompt Hub** icon in the VS Code Activity Bar (Sidebar).
+2. Click the **`+`** (Add Prompt) button in the header of the "My Prompts" section.
+3. In the Webview panel, enter the prompt **Title** and **Content**.
+4. *(Optional)* Add images by pasting screenshots (`Ctrl+V`) or dragging files into the Webview page.
+5. Click **Save**.
+6. Select any prompt in the tree view list:
+   - Associated images will be attached to the AI chat session as context.
+   - Prompt text will copy to the clipboard.
+   - The sidebar chat window is focused, and the prompt text is automatically pasted after the configured delay.
+7. Click the checkmark icon next to a prompt to mark it as completed and archive it.
 
-* VS Code sürüm 1.93.0 veya üzeri.
-* Resim kopyalama ve aktarım otomasyonları şu an ağırlıklı olarak **Windows** (`win32`) işletim sistemine optimize edilmiştir (PowerShell aracılığıyla).
+---
+
+## ⚙️ Extension Settings
+
+Prompt Hub contributes the following settings under VS Code Configuration:
+
+- `promptHub.language`: Preferred language for the Prompt Hub interface. Options: `auto` (detects VS Code language), `en` (English), or `tr` (Turkish). (Default: `auto`)
+- `promptHub.pasteDelay`: The duration of delay (in milliseconds) before simulating the `Ctrl+V` keyboard shortcut to paste text. (Default: `200ms`)
+
+---
+
+## 📋 Requirements & Platform Support
+
+* **VS Code version:** `1.85.0` or higher.
+* **Platform Support:** Clipboard image copying and automation features are optimized for **Windows** (`win32`) using PowerShell integration.
 
 ---
 *Developed with ❤️ by [rhodofer](https://github.com/rhodofer).*

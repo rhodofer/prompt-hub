@@ -28,6 +28,11 @@
           "id": "promptHubView",
           "name": "My Prompts",
           "contextualTitle": "Prompt Hub"
+        },
+        {
+          "id": "promptHubCompletedView",
+          "name": "Daha Önce Tamamlananlar",
+          "contextualTitle": "Prompt Hub"
         }
       ]
     },
@@ -61,6 +66,18 @@
         "title": "Open Image",
         "category": "Prompt Hub",
         "icon": "$(file-media)"
+      },
+      {
+        "command": "promptHub.openSettings",
+        "title": "Open Settings",
+        "category": "Prompt Hub",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "promptHub.completePrompt",
+        "title": "Complete",
+        "category": "Prompt Hub",
+        "icon": "$(check)"
       }
     ],
     "menus": {
@@ -69,18 +86,28 @@
           "command": "promptHub.addPrompt",
           "when": "view == promptHubView",
           "group": "navigation"
+        },
+        {
+          "command": "promptHub.openSettings",
+          "when": "view == promptHubView",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
         {
+          "command": "promptHub.completePrompt",
+          "when": "viewItem == prompt-active",
+          "group": "inline@1"
+        },
+        {
           "command": "promptHub.editPrompt",
-          "when": "viewItem == prompt",
-          "group": "inline"
+          "when": "viewItem == prompt-active || viewItem == prompt-completed",
+          "group": "inline@2"
         },
         {
           "command": "promptHub.deletePrompt",
-          "when": "viewItem == prompt",
-          "group": "inline"
+          "when": "viewItem == prompt-active || viewItem == prompt-completed",
+          "group": "inline@3"
         }
       ]
     },
@@ -96,6 +123,13 @@
           ],
           "default": "auto",
           "description": "Preferred language for Prompt Hub UI. 'auto' matches the VS Code display language."
+        },
+        "promptHub.pasteDelay": {
+          "type": "integer",
+          "default": 200,
+          "minimum": 0,
+          "maximum": 2000,
+          "description": "Delay (in milliseconds) before simulating Ctrl+V to paste the copied content."
         }
       }
     }

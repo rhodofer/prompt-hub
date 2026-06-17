@@ -4,6 +4,7 @@ import { PromptTreeProvider, PromptTreeItem } from './promptProvider';
 import { addPrompt, updatePrompt, deletePrompt, getPrompts } from './promptManager';
 import { Prompt } from './types';
 import { openPromptPanel } from './promptWebview';
+import { openSettingsPanel } from './settingsWebview';
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,7 +16,13 @@ export function activate(context: vscode.ExtensionContext): void {
   out.appendLine('[Prompt Hub] activate() called');
   out.show(true);
 
-  const provider = new PromptTreeProvider(context);
+  const provider = new PromptTreeProvider(context, 'active');
+  const completedProvider = new PromptTreeProvider(context, 'completed');
+  const refreshBoth = () => {
+    provider.refresh();
+    completedProvider.refresh();
+  };
+
   out.appendLine(`[Prompt Hub] Stored prompts database contents: ${JSON.stringify(getPrompts(context))}`);
   const treeView = vscode.window.createTreeView('promptHubView', {
     treeDataProvider: provider,
@@ -23,7 +30,22 @@ export function activate(context: vscode.ExtensionContext): void {
     dragAndDropController: provider,
   });
   context.subscriptions.push(treeView);
-  out.appendLine('[Prompt Hub] TreeView created');
+
+  const completedTreeView = vscode.window.createTreeView('promptHubCompletedView', {
+    treeDataProvider: completedProvider,
+    showCollapseAll: false,
+    dragAndDropController: completedProvider,
+  });
+  context.subscriptions.push(completedTreeView);
+
+  const updateTreeViewTitles = () => {
+    const t = getTranslations();
+    treeView.title = t.activePromptsTitle;
+    completedTreeView.title = t.completedPromptsTitle;
+  };
+  updateTreeViewTitles();
+
+  out.appendLine('[Prompt Hub] TreeViews created');
 
   vscode.commands.getCommands(true).then(cmds => {
     const chatCmds = cmds.filter(c => c.toLowerCase().includes('chat') || c.toLowerCase().includes('antigravity') || c.toLowerCase().includes('copilot'));
@@ -57,7 +79,7 @@ export function activate(context: vscode.ExtensionContext): void {
             t.addedNotification.replace('{title}', prompt.title)
           );
         }
-        provider.refresh();
+        refreshBoth();
       });
     })
   );
@@ -126,7 +148,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const shouldPaste = prompt.content || (hasImages && !imageAttachedAuto);
       if (shouldPaste) {
-        const delay = hasImages ? 150 : 200;
+        const config = vscode.workspace.getConfiguration('promptHub');
+        const delay = config.get<number>('pasteDelay', 200);
         out.appendLine(`[Prompt Hub] Yapıştırma gecikmesi: ${delay}ms`);
 
         setTimeout(() => {
@@ -194,7 +217,7 @@ export function activate(context: vscode.ExtensionContext): void {
             imagePath: data.imagePath,
             imagePaths: data.imagePaths,
           });
-          provider.refresh();
+          refreshBoth();
           vscode.window.showInformationMessage(t.updatedNotification);
         },
         item.prompt
@@ -213,8 +236,32 @@ export function activate(context: vscode.ExtensionContext): void {
       );
       if (ok !== t.deleteConfirmButton) return;
       await deletePrompt(context, item.prompt.id);
-      provider.refresh();
+      refreshBoth();
       vscode.window.showInformationMessage(t.deletedNotification);
+    })
+  );
+
+  // ── Open Settings (opens Webview panel) ──────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('promptHub.openSettings', () => {
+      out.appendLine('[Prompt Hub] openSettings triggered — opening webview');
+      openSettingsPanel(context, () => {
+        updateTreeViewTitles();
+        refreshBoth();
+      });
+    })
+  );
+
+  // ── Complete/Archive Prompt ──────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('promptHub.completePrompt', async (item: PromptTreeItem) => {
+      const all = getPrompts(context);
+      const target = all.find(p => p.id === item.prompt.id);
+      if (target) {
+        target.isCompleted = true;
+        await updatePrompt(context, item.prompt.id, target);
+        refreshBoth();
+      }
     })
   );
 }

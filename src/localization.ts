@@ -27,6 +27,14 @@ export interface TranslationBundle {
   deletedNotification: string;
   updatedNotification: string;
   cannotOpenImage: string;
+  settingsTitle: string;
+  settingsSaved: string;
+  languageLabel: string;
+  languageDescription: string;
+  pasteDelayLabel: string;
+  pasteDelayDescription: string;
+  activePromptsTitle: string;
+  completedPromptsTitle: string;
 }
 
 const en: TranslationBundle = {
@@ -55,6 +63,14 @@ const en: TranslationBundle = {
   deletedNotification: '🗑️ Prompt deleted.',
   updatedNotification: '✏️ Prompt updated.',
   cannotOpenImage: 'Cannot open image {name}: {err}',
+  settingsTitle: '⚙️ Prompt Hub Settings',
+  settingsSaved: '⚙️ Settings saved successfully.',
+  languageLabel: 'Preferred Language',
+  languageDescription: 'Select the language for the Prompt Hub UI.',
+  pasteDelayLabel: 'Paste Delay (ms)',
+  pasteDelayDescription: 'The delay in milliseconds before simulating the paste keypress after focusing the chat panel.',
+  activePromptsTitle: 'Active Prompts',
+  completedPromptsTitle: 'Previously Completed',
 };
 
 const tr: TranslationBundle = {
@@ -83,6 +99,14 @@ const tr: TranslationBundle = {
   deletedNotification: '🗑️ Prompt silindi.',
   updatedNotification: '✏️ Prompt güncellendi.',
   cannotOpenImage: 'Görsel açılamadı {name}: {err}',
+  settingsTitle: '⚙️ Prompt Hub Ayarları',
+  settingsSaved: '⚙️ Ayarlar başarıyla kaydedildi.',
+  languageLabel: 'Tercih Edilen Dil',
+  languageDescription: 'Prompt Hub arayüzü için kullanılacak dili seçin.',
+  pasteDelayLabel: 'Yapıştırma Gecikmesi (ms)',
+  pasteDelayDescription: 'Sohbet paneli odaklandıktan sonra yapıştırma tuş simülasyonu yapılmadan önce beklenecek milisaniye cinsinden gecikme süresi.',
+  activePromptsTitle: 'Aktif Promptlar',
+  completedPromptsTitle: 'Daha Önce Tamamlananlar',
 };
 
 export function getTranslations(): TranslationBundle {
